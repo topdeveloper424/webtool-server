@@ -342,6 +342,7 @@ def db_process(record):
         "Doors" : date_object, 
         "VenueName" : record.venue, 
         "VenueAddress" : "", 
+        "Genres" : record.genre,
         "MainActShowTime" : main_act_show_time, 
         "MainActName" : record.main_act, 
         "SupportActs" : support_array, 
