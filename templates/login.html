@@ -1,0 +1,43 @@
+{% extends 'layouts/auth.html' %}
+{% load staticfiles %}
+{% block content %}
+    <div class="row authentication">
+        <div class="col col-login mx-auto">
+            <div class="text-center mb-6">
+                <img src="{% static 'images\brand\logo.png' %}" class="h-8" alt="">
+            </div>
+            <form class="card" method="post">
+                <div class="card-body p-6 ">
+                    <div class="card-title text-center">Login to your Account</div>
+                    <div class="input-icon form-group wrap-input">
+                        <span class="input-icon-addon search-icon">
+                            <i class="mdi mdi-account"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Username">
+                    </div>
+                    <div class="input-icon form-group wrap-input">
+                        <span class="input-icon-addon search-icon">
+                            <i class="zmdi zmdi-lock"></i>
+                        </span>
+                        <input type="password" class="form-control mb-0" id="exampleInputPassword1" placeholder="Password">
+                        <label class="form-label">
+                            <a href="forgot-password.html" class="float-right small">I forgot password</a>
+                        </label>
+                    </div>
+                    <div class="form-group mt-5">
+                        <label class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input">
+                            <span class="custom-control-label">Remember me</span>
+                        </label>
+                    </div>
+                    <div class="form-footer">
+                        <button type="submit" class="btn btn-warning btn-block">Sign in</button>
+                    </div>
+                    <div class="text-center text-muted mt-3">
+                        Don't have account yet? <a href="{% url 'accounts:sign_up' %}">Sign up</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

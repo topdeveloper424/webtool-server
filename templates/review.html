@@ -1,0 +1,1671 @@
+{% extends 'layouts/main.html' %} {% load staticfiles %} {% block content %}
+{% load poll_extras %}
+
+<style>
+    div.it {
+    line-height: 5%;
+    }
+
+    table,
+    th,
+    td {
+        padding: 0px;
+        font-size: 12px;
+        text-align: center;
+    }
+    
+    .form-control {
+        font-size: 12px;
+    }
+    
+    .changed-record {
+        background-color: greenyellow;
+    }
+    .doors-time {
+    border: none;
+    color: #555;
+    text-align: center;
+  }
+
+
+</style>
+<link href="{% static 'plugins\tabs\style.css' %}" rel="stylesheet">
+<link href="{% static 'plugins\notify\css\jquery.growl.css' %}" rel="stylesheet">
+
+<div class=" content-area">
+    <div class="page-header">
+        <h4 class="page-title">{{ log.crawler.name }}</h4>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Review Job</li>
+        </ol>
+    </div>
+    <div class="card row">
+        <div class="card-body">
+            <select id="filterRecord" onchange="filter({{log.id}})" style="display: none">
+                    <option value="0" {% if mode == None or mode == '0' %} selected {% endif %}>All</option>
+                    <option value="1" {% if mode == '1' %} selected {% endif %}>Approved</option>
+                </select> &nbsp;
+            <span class="tag tag-{% if log.status == 'P' %}red{% elif log.status == 'A' %}blue{% elif log.status == 'S' %}green{% else %}gray{% endif %}">{{ log.get_status_display }}</span> &nbsp;
+            <br>
+            <br>
+            <div class="tab_wrapper first_tab">
+                <ul class="tab_list">
+                    <li class="active">
+                        Pending Review ({% get_pending_number log.id %})
+                    </li>
+                    <li>
+                       All ({% get_total_number log.id %})
+                    </li>
+                    <li>
+                        Approved ({% get_approved_number log.id %})
+                    </li>
+                    <li>
+                        Sent to Import ({% get_sent_number log.id %})
+                    </li>
+                    <li>
+                        Deleted ({% get_deleted_number log.id %})
+                    </li>
+                    <li>
+                        Canceled ({% get_canceled_number log.id %})
+                    </li>
+
+                </ul>
+
+                <div class="content_wrapper">
+
+                        <div class="tab_content active">
+
+                                <input type="checkbox" id="checkAll1" onchange="checkAll(1)"> <span>check all</span>
+                                &nbsp;&nbsp;&nbsp;&nbsp;
+                                <button class="btn btn-secondary" onclick="approve({{ log.id }},1)">Approve</button> &nbsp;
+        
+                                <div class="mt-1" style="overflow: auto; height: 80vh">
+                                    {% for record in records %}
+                                    {% if record.status == 'P' %}
+                                        <div class="row" id="rowPend{{ record.id }}">
+                                            <div class="panel-group col-md-12" id="accordionPend{{ record.id }}">
+                                                <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                                    <div class="expanel-heading">
+                                                        <h4 class="expanel-title1">
+                                                            <input type="checkbox" class="recordCheck1" id="checkbox{{ record.id }}"> &nbsp;
+                                                            <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionPend{{ record.id }}" href="#collapsePend{{ record.id }}" aria-expanded="false">{{ record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                                    {% if record.status == 'P' %}
+                                                                    <span class="tag tag-red" id="recordStatus{{record.id}}">Ready For Review</span> {% elif record.status == 'A' %}
+                                                                    <span class="tag tag-blue" id="recordStatus{{record.id}}">Approved</span> {% elif record.status == 'S' %}
+                                                                    <span class="tag tag-pink" id="recordStatus{{record.id}}">Sent to Import</span> {% elif record.status == 'D' %}
+                                                                    <span class="tag tag-gray-dark" id="recordStatus{{record.id}}">Deleted</span> {% endif%}
+                                                                </a>
+                                                            <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'Pend')">view source page</button>
+                                                        </h4>
+                                                    </div>
+                                                    <div id="collapsePend{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                                        <div class="expanel-body row">
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-12 col-lg-12 it">
+                                                                        <div class="row it">
+                                                                            <div class="col-md-4 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Show</label>
+                                                                                    <input type="text" class="form-control" id="showPend{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Date</label>
+                                                                                    <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="datePend{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Doors Time</label>
+                                                                                    <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                        <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourPend{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                                        <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinPend{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Promoter</label>
+                                                                                    <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterPend{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Festival</label>
+                                                                                    <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalPend{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                                </div>
+                                                                            </div>
+                        
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-12 col-lg-12 it">
+                                                                        <div class="row it">
+                                                                            <div class="col-md-1 it">
+                                                                                    <div class="form-group it">
+                                                                                        <label class="form-label">Main Act</label>
+                                                                                        <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActPend{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                                    </div>
+                                                                                </div>
+                                
+                                                                            <div class="col-md-1 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Genre</label>
+                                                                                    <input type="text" class="form-control" id="genrePend{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                                </div>
+                                                                            </div>
+                        
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Supporting Act</label>
+                                                                                    <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActPend{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-1 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Sold out</label>
+                                                                                    <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutPend{{ record.id }}">
+                                                                                        <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                                        <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                                    </select>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-1 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Ticket Price</label>
+                                                                                    <input type="number" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPricePend{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" step='0.01' placeholder="Ticket Price">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">On-Sale Date</label>
+                                                                                    <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDatePend{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">On-Sale Time</label>
+                                                                                    <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                        <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourPend{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                                        <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinPend{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-1 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Doors Only</label>
+                                                                                    <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlyPend{{ record.id }}">
+                                                                                            <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                            <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                                        </select>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-1 it">
+                                                                                <div class="form-group">
+                                                                                    <label class="form-label">Free</label>
+                                                                                    <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freePend{{ record.id }}">
+                                                                                            <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                            <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                                        </select>
+                                                                                </div>
+                                                                            </div>
+                        
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-12 col-lg-12 it">
+                                                                        <div class="row it">
+                                                                            <div class="col-md-6 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Description</label>
+                                                                                    <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionPend{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-6 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Images</label>
+                                                                                    <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImagePend{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-12 col-lg-12 it">
+                                                                        <div class="row it">
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Venue</label>
+                                                                                    <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venuePend{{ record.id }}" placeholder="Enter Venue">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">Crawler Job Date/Time</label>
+                                                                                    <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}"  style="text-align:center" readonly>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">&nbsp;</label>
+                                                                                    <button class="btn btn-warning" onclick="saveRecord({{ record.id }}, {{log.id}},'Pend')">Save Changes</button>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">&nbsp;</label>
+                                                                                    <button class="btn btn-secondary" onclick="approveRecord({{ record.id }}, {{log.id}},'Pend')">&nbsp;&nbsp;&nbsp;&nbsp;Approve&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                                </div>
+                                                                            </div>
+                        
+                                                                            <div class="col-md-2 it">
+                                                                                <div class="form-group it">
+                                                                                    <label class="form-label">&nbsp;</label>
+                                                                                    <button class="btn btn-danger" onclick="deleteRecord({{ record.id }}, {{log.id}},'Pend')">&nbsp;&nbsp;&nbsp;&nbsp;Delete&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                                </div>
+                                                                            </div>
+                        
+                                                                        </div>
+                                                                    </div>
+                        
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12" id="sourcePagePend{{ record.id }}"></div>
+                        
+                        
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                        
+                        
+                        
+                                        </div>
+                                    {% endif %}
+                                    {% endfor %}
+        
+        
+                                </div>
+                            </div>
+        
+
+                    <div class="tab_content">
+                        <input type="checkbox" id="checkAll0" onchange="checkAll(0)"> <span>check all</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <button class="btn btn-secondary" onclick="approve({{ log.id }},0)">Approve</button> &nbsp;
+                        <button class="btn btn-success" onclick="sendImport({{ log.id }},0)" {% if log.status != 'A' %} disabled {% endif %}>Send to Import</button>
+
+                        <div class="mt-1" style="overflow: auto; height: 80vh">
+                            {% for record in records %}
+            
+                            <div class="row" id="rowAll{{ record.id }}">
+                                <div class="panel-group col-md-12" id="accordionAll{{ record.id }}">
+                                    <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                        <div class="expanel-heading">
+                                            <h4 class="expanel-title1">
+                                                <input type="checkbox" class="recordCheck0" id="checkbox{{ record.id }}"> &nbsp;
+                                                <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionAll{{ record.id }}" href="#collapseAll{{ record.id }}" aria-expanded="false">{{record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                        {% if record.status == 'P' %}
+                                                        <span class="tag tag-red" id="recordStatus{{record.id}}">Ready For Review</span> {% elif record.status == 'A' %}
+                                                        <span class="tag tag-blue" id="recordStatus{{record.id}}">Approved</span> {% elif record.status == 'S' %}
+                                                        <span class="tag tag-pink" id="recordStatus{{record.id}}">Sent to Import</span> {% elif record.status == 'C' %}
+                                                        <span class="tag tag-gray" id="recordStatus{{record.id}}">Canceled</span> {% elif record.status == 'D' %}
+                                                        <span class="tag tag-gray-dark" id="recordStatus{{record.id}}">Deleted</span> {% endif%}
+                                                </a>
+                                                <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'All')">view source page</button>
+                                            </h4>
+                                        </div>
+                                        <div id="collapseAll{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                            <div class="expanel-body row">
+                                                <div class="col-md-12 col-lg-12 it">
+                                                    <div class="row it">
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-4 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Show</label>
+                                                                        <input type="text" class="form-control" id="showAll{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Date</label>
+                                                                        <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="dateAll{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Doors Time</label>
+                                                                        <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                            <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourAll{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                            <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinAll{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Promoter</label>
+                                                                        <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterAll{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Festival</label>
+                                                                        <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalAll{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                    </div>
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Main Act</label>
+                                                                            <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActAll{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                        </div>
+                                                                    </div>
+                    
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Genre</label>
+                                                                        <input type="text" class="form-control" id="genreAll{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                    </div>
+                                                                </div>
+            
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Supporting Act</label>
+                                                                        <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActAll{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Sold out</label>
+                                                                        <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutAll{{ record.id }}">
+                                                                            <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                            <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Ticket Price</label>
+                                                                        <input type="text" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPriceAll{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" step='0.01' placeholder="Ticket Price">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">On-Sale Date</label>
+                                                                        <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDateAll{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">On-Sale Time</label>
+                                                                        <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                            <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourAll{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                            <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinAll{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Doors Only</label>
+                                                                        <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlyAll{{ record.id }}">
+                                                                                <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">Free</label>
+                                                                        <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freeAll{{ record.id }}">
+                                                                                <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                    </div>
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-6 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Description</label>
+                                                                        <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionAll{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-6 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Images</label>
+                                                                        <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImageAll{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Venue</label>
+                                                                        <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venueAll{{ record.id }}" placeholder="Enter Venue">
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Crawler Job Date/Time</label>
+                                                                        <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}" readonly style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">&nbsp;</label>
+                                                                        <button class="btn btn-warning" onclick="saveRecord({{ record.id }}, {{log.id}}),'All'" {% if record.status == 'S' %} style="display:none" {% endif %}>Save Changes</button>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">&nbsp;</label>
+                                                                        <button class="btn btn-secondary" onclick="approveRecord({{ record.id }}, {{log.id}},'All')" {% if record.status != 'P' %} style="display:none" {% endif %}>&nbsp;&nbsp;&nbsp;&nbsp;Approve&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                    </div>
+                                                                </div>
+            
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">&nbsp;</label>
+                                                                        <button class="btn btn-success" {% if record.status != 'A' %} style="display:none" {% endif %} onclick="sendRecord({{ record.id }}, {{log.id}},'All')">Send to Import</button>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">&nbsp;</label>
+                                                                        <button class="btn btn-danger" {% if record.status == 'D' %} style="display:none" {% endif %} onclick="deleteRecord({{ record.id }}, {{log.id}},'All')">&nbsp;&nbsp;&nbsp;&nbsp;Delete&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                    </div>
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+            
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-12" id="sourcePageAll{{ record.id }}"></div>
+            
+            
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+            
+            
+            
+                            </div>
+                            {% endfor %}
+
+
+                        </div>
+                    </div>
+
+
+                    <div class="tab_content">
+                            <input type="checkbox" id="checkAll2" onchange="checkAll(2)"> <span>check all</span>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                            <button class="btn btn-success" onclick="sendImport({{ log.id }},2)">Send to Import</button>
+    
+                            <div class="mt-1" style="overflow: auto; height: 80vh">
+                                {% for record in records %}
+                                {% if record.status == 'A' %}
+                                <div class="row" id="rowApp{{ record.id }}">
+                                    <div class="panel-group col-md-12" id="accordionApp{{ record.id }}">
+                                        <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                            <div class="expanel-heading">
+                                                <h4 class="expanel-title1">
+                                                    <input type="checkbox" class="recordCheck2" id="checkbox{{ record.id }}"> &nbsp;
+                                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionApp{{ record.id }}" href="#collapseApp{{ record.id }}" aria-expanded="false">{{ record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                            {% if record.status == 'P' %}
+                                                            <span class="tag tag-red" id="recordStatus{{record.id}}">Ready For Review</span> {% elif record.status == 'A' %}
+                                                            <span class="tag tag-blue" id="recordStatus{{record.id}}">Approved</span> {% elif record.status == 'S' %}
+                                                            <span class="tag tag-pink" id="recordStatus{{record.id}}">Sent to Import</span> {% endif%}
+                                                    </a>
+                                                    <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'App')">view source page</button>
+                                                </h4>
+                                            </div>
+                                            <div id="collapseApp{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                                <div class="expanel-body row">
+                                                    <div class="col-md-12 col-lg-12 it">
+                                                        <div class="row it">
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-4 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Show</label>
+                                                                            <input type="text" class="form-control" id="showApp{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Date</label>
+                                                                            <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="dateApp{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourApp{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinApp{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Promoter</label>
+                                                                            <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterApp{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Festival</label>
+                                                                            <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalApp{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-1 it">
+                                                                            <div class="form-group it">
+                                                                                <label class="form-label">Main Act</label>
+                                                                                <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActApp{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                            </div>
+                                                                        </div>
+                        
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Genre</label>
+                                                                            <input type="text" class="form-control" id="genreApp{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Supporting Act</label>
+                                                                            <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActApp{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Sold out</label>
+                                                                            <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutApp{{ record.id }}">
+                                                                                <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Ticket Price</label>
+                                                                            <input type="text" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPriceApp{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" placeholder="Ticket Price">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Date</label>
+                                                                            <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDateApp{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourApp{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinApp{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Only</label>
+                                                                            <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlyApp{{ record.id }}">
+                                                                                    <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group">
+                                                                            <label class="form-label">Free</label>
+                                                                            <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freeApp{{ record.id }}">
+                                                                                    <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Description</label>
+                                                                            <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionApp{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Images</label>
+                                                                            <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImageApp{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Venue</label>
+                                                                            <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venueApp{{ record.id }}" placeholder="Enter Venue">
+                                                                        </div>
+                                                                    </div>
+                                                                        <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Crawler Job Date/Time</label>
+                                                                            <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}" readonly style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2"></div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-warning" onclick="saveRecord({{ record.id }}, {{log.id}},'App')">Save Changes</button>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-success" onclick="sendRecord({{ record.id }}, {{log.id}},'App')">Send to Import</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-danger" onclick="deleteRecord({{ record.id }}, {{log.id}},'App')">&nbsp;&nbsp;&nbsp;&nbsp;Delete&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-12" id="sourcePageApp{{ record.id }}"></div>
+                
+                
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+    
+    
+                            </div>
+                    </div>
+
+                    <div class="tab_content">
+                            <input type="checkbox" id="checkAll3" onchange="checkAll(3)"> <span>check all</span>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                            <button class="btn btn-success" onclick="sendImport({{ log.id }},3)" >Send to Import</button>
+    
+                            <div class="mt-1" style="overflow: auto; height: 80vh">
+                                {% for record in records %}
+                                {% if record.status == 'S' %}
+                                <div class="row">
+                                    <div class="panel-group col-md-12" id="accordionSent{{ record.id }}">
+                                        <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                            <div class="expanel-heading">
+                                                <h4 class="expanel-title1">
+                                                    <input type="checkbox" class="recordCheck3" id="checkbox{{ record.id }}"> &nbsp;
+                                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionSent{{ record.id }}" href="#collapseSent{{ record.id }}" aria-expanded="false">{{ record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                            {% if record.status == 'P' %}
+                                                            <span class="tag tag-red" id="recordStatus{{record.id}}">Ready For Review</span> {% elif record.status == 'A' %}
+                                                            <span class="tag tag-blue" id="recordStatus{{record.id}}">Approved</span> {% elif record.status == 'S' %}
+                                                            <span class="tag tag-pink" id="recordStatus{{record.id}}">Sent to Import</span> {% elif record.status == 'D' %}
+                                                            <span class="tag tag-gray-dark" id="recordStatus{{record.id}}">Deleted</span> {% endif%}
+                                                        </a>
+                                                    <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'Sent')">view source page</button>
+                                                </h4>
+                                            </div>
+                                            <div id="collapseSent{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                                <div class="expanel-body row">
+                                                    <div class="col-md-12 col-lg-12 it">
+                                                        <div class="row it">
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-4 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Show</label>
+                                                                            <input type="text" class="form-control" id="showSent{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Date</label>
+                                                                            <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="dateSent{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourSent{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinSent{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Promoter</label>
+                                                                            <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterSent{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Festival</label>
+                                                                            <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalSent{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-1 it">
+                                                                            <div class="form-group it">
+                                                                                <label class="form-label">Main Act</label>
+                                                                                <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActSent{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                            </div>
+                                                                        </div>
+                        
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Genre</label>
+                                                                            <input type="text" class="form-control" id="genreSent{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Supporting Act</label>
+                                                                            <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActSent{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Sold out</label>
+                                                                            <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutSent{{ record.id }}">
+                                                                                <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Ticket Price</label>
+                                                                            <input type="text" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPriceSent{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" placeholder="Ticket Price">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Date</label>
+                                                                            <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDateSent{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourSent{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinSent{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Only</label>
+                                                                            <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlySent{{ record.id }}">
+                                                                                    <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group">
+                                                                            <label class="form-label">Free</label>
+                                                                            <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freeSent{{ record.id }}">
+                                                                                    <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Description</label>
+                                                                            <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionSent{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Images</label>
+                                                                            <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImageSent{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Venue</label>
+                                                                            <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venueSent{{ record.id }}" placeholder="Enter Venue">
+                                                                        </div>
+                                                                    </div>
+                                                                        <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Crawler Job Date/Time</label>
+                                                                            <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}" readonly style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4"></div>
+                
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-success" {% if record.status != 'A' and record.status != 'S' %} disabled {% endif %} onclick="sendRecord({{ record.id }}, {{log.id}},'Sent')">Send to Import</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-danger" onclick="deleteRecord({{ record.id }}, {{log.id}},'Sent')">&nbsp;&nbsp;&nbsp;&nbsp;Delete&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-12" id="sourcePageSent{{ record.id }}"></div>
+                
+                
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+    
+    
+                            </div>
+
+                    </div>
+
+
+                    <div class="tab_content">
+    
+                            <div class="mt-1" style="overflow: auto; height: 80vh">
+                                {% for record in records %}
+                                {% if record.status == 'D' %}
+                                <div class="row" id="rowDel{{ record.id }}">
+                                    <div class="panel-group col-md-12" id="accordionDel{{ record.id }}">
+                                        <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                            <div class="expanel-heading">
+                                                <h4 class="expanel-title1">
+                                                    <input type="checkbox" class="recordCheck3" id="checkbox{{ record.id }}" style="display: none;"> &nbsp;
+                                                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionDel{{ record.id }}" href="#collapseDel{{ record.id }}" aria-expanded="false">{{ record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                            {% if record.status == 'P' %}
+                                                            <span class="tag tag-red" id="recordStatus{{record.id}}">Ready For Review</span> {% elif record.status == 'A' %}
+                                                            <span class="tag tag-blue" id="recordStatus{{record.id}}">Approved</span> {% elif record.status == 'S' %}
+                                                            <span class="tag tag-pink" id="recordStatus{{record.id}}">Sent to Import</span> {% elif record.status == 'D' %}
+                                                            <span class="tag tag-gray-dark" id="recordStatus{{record.id}}">Deleted</span> {% endif%}
+                                                        </a>
+                                                    <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'Del')">view source page</button>
+                                                </h4>
+                                            </div>
+                                            <div id="collapseDel{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                                <div class="expanel-body row">
+                                                    <div class="col-md-12 col-lg-12 it">
+                                                        <div class="row it">
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-4 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Show</label>
+                                                                            <input type="text" class="form-control" id="showDel{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Date</label>
+                                                                            <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="dateDel{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourDel{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinDel{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Promoter</label>
+                                                                            <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterDel{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Festival</label>
+                                                                            <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalDel{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-1 it">
+                                                                            <div class="form-group it">
+                                                                                <label class="form-label">Main Act</label>
+                                                                                <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActDel{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                            </div>
+                                                                        </div>
+                        
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Genre</label>
+                                                                            <input type="text" class="form-control" id="genreDel{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                        </div>
+                                                                    </div>
+                
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Supporting Act</label>
+                                                                            <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActDel{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Sold out</label>
+                                                                            <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutDel{{ record.id }}">
+                                                                                <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Ticket Price</label>
+                                                                            <input type="text" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPriceDel{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" placeholder="Ticket Price">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Date</label>
+                                                                            <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDateDel{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">On-Sale Time</label>
+                                                                            <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                                <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourDel{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                                <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinDel{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Doors Only</label>
+                                                                            <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlyDel{{ record.id }}">
+                                                                                    <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-1 it">
+                                                                        <div class="form-group">
+                                                                            <label class="form-label">Free</label>
+                                                                            <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freeDel{{ record.id }}">
+                                                                                    <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                    <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                                </select>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Description</label>
+                                                                            <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionDel{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-6 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Images</label>
+                                                                            <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImageDel{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-12 col-lg-12 it">
+                                                                <div class="row it">
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Venue</label>
+                                                                            <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venueDel{{ record.id }}" placeholder="Enter Venue">
+                                                                        </div>
+                                                                    </div>
+                                                                        <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Crawler Job Date/Time</label>
+                                                                            <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}" readonly style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4"></div>
+                                                                    <div class="col-md-2 it">
+                                                                    </div>
+                                                                    <div class="col-md-2 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">&nbsp;</label>
+                                                                            <button class="btn btn-danger" onclick="cancelRecord({{ record.id }}, {{log.id}},'Del')">&nbsp;&nbsp;&nbsp;&nbsp;Cancel&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                        </div>
+                                                                    </div>
+                
+                                                                </div>
+                                                            </div>
+                
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-12" id="sourcePageDel{{ record.id }}"></div>
+                
+                
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+    
+    
+                            </div>
+
+                    </div>
+
+                    <div class="tab_content">
+    
+                        <div class="mt-1" style="overflow: auto; height: 80vh">
+                            {% for record in records %}
+                            {% if record.status == 'C' %}
+                            <div class="row" id="rowCan{{ record.id }}">
+                                <div class="panel-group col-md-12" id="accordionCan{{ record.id }}">
+                                    <div class="panel expanel-{% if record.change_type == 'N' %}success{% else %}primary{% endif %} mb-4" id="recordPanel{{ record.id }}">
+                                        <div class="expanel-heading">
+                                            <h4 class="expanel-title1">
+                                                <!-- <input type="checkbox" class="recordCheck4" id="checkbox{{ record.id }}"> &nbsp; -->
+                                                <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordionCan{{ record.id }}" href="#collapseCan{{ record.id }}" aria-expanded="false">{{ record.show|slice:":110" }} {% if record.show == '' %} no show {% endif %}
+                                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="tag tag-yellow">{{ record.date|date:'d/m/Y' }}&nbsp;{{record.doors}}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                                        <span class="tag tag-dark" id="recordStatus{{record.id}}">Canceled</span>
+                                                    </a>
+                                                <button class="btn btn-sm btn-pill btn-info" style="float: right" onclick="view({{ record.id }},'Can')">view source page</button>
+                                            </h4>
+                                        </div>
+                                        <div id="collapseCan{{ record.id }}" class="expanel-collapse collapse" role="tabpanel" aria-expanded="false">
+                                            <div class="expanel-body row">
+                                                <div class="col-md-12 col-lg-12 it">
+                                                    <div class="row it">
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-4 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Show</label>
+                                                                        <input type="text" class="form-control" id="showCan{{ record.id }}" value="{{ record.show }}" placeholder="show">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Date</label>
+                                                                        <input type="date" class="form-control {% if record.date_flag == 1 %}changed-record{% endif %}" id="dateCan{{ record.id }}" value="{{ record.date|date:'Y-m-d' }}" style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Doors Time</label>
+                                                                        <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                            <input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="doorsHourCan{{ record.id }}" value="{% get_hour record.doors %}" style="text-align:center">
+                                                                            <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.doors_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="doorsMinCan{{ record.id }}" value="{% get_min record.doors %}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Promoter</label>
+                                                                        <input type="text" class="form-control {% if record.promoter_flag == 1 %}changed-record{% endif %}" id="promoterCan{{ record.id }}" value="{{ record.promoter }}" placeholder="promoter">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Festival</label>
+                                                                        <input type="text" class="form-control {% if record.festival_flag == 1 %}changed-record{% endif %}" id="festivalCan{{ record.id }}" value="{{ record.festival }}" placeholder="festival">
+                                                                    </div>
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-1 it">
+                                                                        <div class="form-group it">
+                                                                            <label class="form-label">Main Act</label>
+                                                                            <input type="text" class="form-control {% if record.main_act_flag == 1 %}changed-record{% endif %}" id="mainActCan{{ record.id }}" value="{{ record.main_act }}" placeholder="Main Act">
+                                                                        </div>
+                                                                    </div>
+                    
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Genre</label>
+                                                                        <input type="text" class="form-control" id="genreCan{{ record.id }}" value="{{ record.genre }}" placeholder="Genre">
+                                                                    </div>
+                                                                </div>
+            
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Supporting Act</label>
+                                                                        <input type="text" class="form-control {% if record.support_act_flag == 1 %}changed-record{% endif %}" id="supportActCan{{ record.id }}" value="{{ record.support_act }}" placeholder="Support Act">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Sold out</label>
+                                                                        <select class="form-control {% if record.sold_out_flag == 1 %}changed-record{% endif %}" id="soldOutCan{{ record.id }}">
+                                                                            <option value="1" {% if record.sold_out == 1 %} selected {% endif %}>Yes</option>
+                                                                            <option value="0" {% if record.sold_out == 0 %} selected {% endif %}>No</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Ticket Price</label>
+                                                                        <input type="text" class="form-control {% if record.ticket_price_flag == 1 %}changed-record{% endif %}" id="ticketPriceCan{{ record.id }}" step='0.01' value="{{ record.ticket_price }}" placeholder="Ticket Price">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">On-Sale Date</label>
+                                                                        <input type="date" class="form-control {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" id="ticketOnsalDateCan{{ record.id }}" value="{{ record.ticket_onsale_datetime|date:'Y-m-d' }}" style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">On-Sale Time</label>
+                                                                        <div style="display: inline-flex; border: 1px solid #ccc; color: #555;">
+                                                                            <input type="number" class="form-control doors-time  {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="23" id="ticketOnsalHourCan{{ record.id }}" value="{%get_hour record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                            <span style="margin-top: 10%;">&nbsp;:&nbsp;</span><input type="number" class="form-control doors-time {% if record.ticket_onsale_datetime_flag == 1 %}changed-record{% endif %}" min="0" max="59" id="ticketOnsalMinCan{{ record.id }}" value="{%get_min record.ticket_onsale_datetime|date:'H:i:s' %}" style="text-align:center">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Doors Only</label>
+                                                                        <select class="form-control {% if record.tickets_at_door_only_flag == 1 %}changed-record{% endif %}" id="ticketsAtDoorOnlyCan{{ record.id }}">
+                                                                                <option value="True" {% if record.tickets_at_door_only == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="False" {% if record.tickets_at_door_only == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-1 it">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">Free</label>
+                                                                        <select class="form-control {% if record.free_flag == 1 %}changed-record{% endif %}" id="freeCan{{ record.id }}">
+                                                                                <option value="True" {% if record.free == 1 %} selected {% endif %}>Yes</option>
+                                                                                <option value="False" {% if record.free == 0 %} selected {% endif %}>No</option>
+                                                                            </select>
+                                                                    </div>
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-6 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Description</label>
+                                                                        <textarea class="form-control {% if record.show_description_flag == 1 %}changed-record{% endif %}" id="descriptionCan{{ record.id }}" style="height: 100px">{{ record.show_description }}</textarea>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-6 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Images</label>
+                                                                        <textarea class="form-control {% if record.listing_main_image_flag == 1 %}changed-record{% endif %}" id="listingMainImageCan{{ record.id }}" style="height: 100px">{{ record.listing_main_image }}</textarea>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 col-lg-12 it">
+                                                            <div class="row it">
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Venue</label>
+                                                                        <input type="text" class="form-control {% if record.venue_flag == 1 %}changed-record{% endif %}" value="{{ record.venue }}" id="venueCan{{ record.id }}" placeholder="Enter Venue">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <div class="form-group it">
+                                                                        <label class="form-label">Crawler Job Date/Time</label>
+                                                                        <input type="text" class="form-control" value="{{ record.record_created|date:'Y-m-d' }}/{{ record.record_created|date:'H:i:s' }}" readonly style="text-align:center">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-4"></div>
+                                                                <div class="col-md-2 it">
+                                                                </div>
+                                                                <div class="col-md-2 it">
+                                                                    <!-- <div class="form-group it">
+                                                                        <label class="form-label">&nbsp;</label>
+                                                                        <button class="btn btn-danger" onclick="cancelRecord({{ record.id }}, {{log.id}})">&nbsp;&nbsp;&nbsp;&nbsp;Cancel&nbsp;&nbsp;&nbsp;&nbsp;</button>
+                                                                    </div> -->
+                                                                </div>
+            
+                                                            </div>
+                                                        </div>
+            
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-12" id="sourcePageCan{{ record.id }}"></div>
+            
+            
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+            
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+
+
+                        </div>
+
+                </div>
+
+
+
+
+                </div>
+
+
+
+
+            </div>
+
+        </div>
+    </div>
+
+
+</div>
+
+
+<div class="modal fade bd-example-modal-lg" id="sourceModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="min-width: 95vw;" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Listing Page/Ticket Page</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+            </div>
+            <div class="modal-body" id="sourceBody">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %} {% block script%}
+<script src="{% static 'plugins/datatable/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'plugins/datatable/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'plugins/tabs/jquery.multipurpose_tabcontent.js' %}"></script>
+<script src="{% static 'plugins/notify/js/rainbow.js' %}"></script>
+<script src="{% static 'plugins/notify/js/jquery.growl.js' %}"></script>
+
+<script>
+    $(function(e) {
+        $('table').DataTable({
+            "searching": false,
+            "info": false,
+            "ordering": false,
+            "pageLength": 100
+        });
+        $(".first_tab").champ();
+    });
+
+    document.querySelectorAll('.doors-time')
+    .forEach(e => e.oninput = () => {
+        // Always 2 digits
+        if (e.value.length >= 2) e.value = e.value.slice(0, 2);
+        // 0 on the left (doesn't work on FF)
+        if (e.value.length === 1) e.value = '0' + e.value;
+        // Avoiding letters on FF
+        if (!e.value) e.value = '00';
+    });
+
+    function checkAll(mode){
+        var checkboxs = document.getElementsByClassName("recordCheck"+mode);
+        if(document.getElementById("checkAll"+mode).checked == true){
+            for (var i = 0; i < checkboxs.length; i++) {
+                var curCheck = checkboxs[i];
+                curCheck.checked = true;
+            }
+        }else{
+            for (var i = 0; i < checkboxs.length; i++) {
+                var curCheck = checkboxs[i];
+                curCheck.checked = false;
+            }
+
+        }
+    }
+
+    function view(record_id,label) {
+        $.ajax({
+            _token: '{% csrf_token %}',
+            type: "POST",
+            url: "{% url 'workspace:get_source' %}",
+            data: {
+                record_id: record_id
+            },
+            dataType: 'json',
+            success: function(response) {
+                var source = response['source'];
+                $("#sourcePage"+label+""+record_id).html(source);
+            }
+        });
+
+    }
+
+    function approve(log_id,mode) {
+        var checkedArray = [];
+        var checkboxs = document.getElementsByClassName("recordCheck"+mode);
+        for (var i = 0; i < checkboxs.length; i++) {
+            var curCheck = checkboxs[i];
+            if (curCheck.checked == true) {
+                var checkID = curCheck.getAttribute('id');
+                checkID = checkID.replace("checkbox", "");
+                checkedArray.push(checkID)
+            }
+        }
+
+        if (checkedArray.length < 1) {
+            swal('Warning!', 'Select one more records!', 'error');
+            return;
+        }
+
+        console.log(checkedArray);
+
+
+        $.ajax({
+            _token: '{% csrf_token %}',
+            type: "POST",
+            url: "{% url 'workspace:approve' %}",
+            data: {
+                log_id: log_id,
+                checked_array : JSON.stringify(checkedArray)
+            },
+            dataType: 'json',
+            success: function(response) {
+                location.reload(true);
+            }
+        });
+    }
+
+    function sendImport(log_id,mode) {
+        swal({
+            title: "Confirm",
+            text: "Are you sure to import now?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
+        }, function() {
+            console.log(log_id);
+
+            var checkedArray = [];
+            var checkboxs = document.getElementsByClassName("recordCheck"+mode);
+            for (var i = 0; i < checkboxs.length; i++) {
+                var curCheck = checkboxs[i];
+                if (curCheck.checked == true) {
+                    var checkID = curCheck.getAttribute('id');
+                    checkID = checkID.replace("checkbox", "");
+                    checkedArray.push(checkID)
+                }
+            }
+
+            if (checkedArray.length < 1) {
+                swal('Warning!', 'Select one more records!', 'error');
+                return;
+            }
+
+            $.ajax({
+                _token: '{% csrf_token %}',
+                type: "POST",
+                url: "{% url 'workspace:send_import' %}",
+                data: {
+                    log_id: log_id,
+                    checked_array : JSON.stringify(checkedArray)
+                },
+                dataType: 'json',
+                success: function(response) {
+                    document.location.href = "/static/test.csv";
+//                    location.reload(true);
+                }
+            });
+
+
+        });
+    }
+
+    function saveRecord(record_id,log_id, label) {
+        var show = $("#show"+label+""+ record_id).val();
+        var date = $("#date"+label+"" + record_id).val();
+        var doorsHour = $("#doorsHour"+label+"" + record_id).val();
+        var doorsMin = $("#doorsMin"+label+"" + record_id).val();
+        var doors = doorsHour + ":" + doorsMin + ":00";
+        var mainActShowTime = $("#mainActShowTime"+label+"" + record_id).val();
+        var mainAct = $("#mainAct"+label+"" + record_id).val();
+        var genre = $("#genre"+label+"" + record_id).val();
+        var supportAct = $("#supportAct"+label+"" + record_id).val();
+        var promoter = $("#promoter"+label+"" + record_id).val();
+        var festival = $("#festival"+label+"" + record_id).val();
+        var description = $("#description"+label+"" + record_id).val();
+        var ticketPrice = $("#ticketPrice" +label+""+ record_id).val();
+        var ticketOnsalDate = $("#ticketOnsalDate" +label+""+ record_id).val();
+        var ticketOnsalHour = $("#ticketOnsalHour"+label+"" + record_id).val();
+        var ticketOnsalMin = $("#ticketOnsalMin"+label+"" + record_id).val();
+        var ticketOnsalTime = ticketOnsalHour + ":" + ticketOnsalMin;
+        var ticketsAtDoorOnly = $("#ticketsAtDoorOnly"+label+"" + record_id).val();
+        var free = $("#free"+label+"" + record_id).val();
+        var soldOut = $("#soldOut" +label+"" + record_id).val();
+        var listingMainImage = $("#listingMainImage" +label+"" + record_id).val();
+        var listingThumnail = $("#listingThumnail" +label+"" + record_id).val();
+        var venue = $("#venue"+label+""+record_id).val();
+
+        $.ajax({
+            _token: '{% csrf_token %}',
+            type: "POST",
+            url: "{% url 'workspace:save_record' %}",
+            data: {
+                log_id:log_id,
+                record_id: record_id,
+                show: show,
+                date: date,
+                doors: doors,
+                mainActShowTime: mainActShowTime,
+                mainAct: mainAct,
+                genre:genre,
+                venue:venue,
+                supportAct: supportAct,
+                promoter: promoter,
+                festival: festival,
+                description: description,
+                ticketPrice: ticketPrice,
+                ticketOnsalDate: ticketOnsalDate,
+                ticketOnsalTime: ticketOnsalTime,
+                ticketsAtDoorOnly: ticketsAtDoorOnly,
+                free: free,
+                soldOut: soldOut,
+                listingMainImage: listingMainImage,
+                listingThumnail: listingThumnail
+            },
+            dataType: 'json',
+            success: function(response) {
+                //                location.reload(true);
+                $("#recordPanel" + record_id).removeClass('success').addClass('default');
+                return $.growl.notice({
+                    message: show+" successfully saved!"
+                  });
+            }
+        });
+
+    }
+    function approveRecord(record_id,log_id, label){
+        $.ajax({
+                _token: '{% csrf_token %}',
+                type: "POST",
+                url: "{% url 'workspace:approve_record' %}",
+                data: {
+                    log_id:log_id,
+                    record_id: record_id,
+                },
+                dataType: 'json',
+                success: function(response) {
+//                   location.reload(true);
+                    $("#recordStatus"+record_id).attr("class","tag tag-lime");
+                    $("#recordStatus"+record_id).html("Approved");
+                    $("#row"+label+""+record_id).remove();
+                    return $.growl.notice({
+                    message: "successfully approved!"
+                  });
+                }
+            });
+
+
+    }
+
+    function sendRecord(record_id,log_id, label){
+        $.ajax({
+            _token: '{% csrf_token %}',
+            type: "POST",
+            url: "{% url 'workspace:send_record' %}",
+            data: {
+                log_id:log_id,
+                record_id: record_id,
+            },
+            dataType: 'json',
+            success: function(response) {
+                $("#recordStatus"+record_id).attr("class","tag tag-pink");
+                $("#recordStatus"+record_id).html("Sent to Import");
+//                location.reload(true);
+                $("#row"+label+""+record_id).remove();
+                return $.growl.notice({
+                    message: "successfully sent!"
+                  });
+            }
+        });
+
+
+    }
+    function deleteRecord(record_id,log_id, label){
+        swal({
+            title: "Confirm",
+            text: "Are you sure to delete this record now?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
+        }, function() {
+
+                $.ajax({
+                _token: '{% csrf_token %}',
+                type: "POST",
+                url: "{% url 'workspace:delete_record' %}",
+                data: {
+                    log_id:log_id,
+                    record_id: record_id,
+                },
+                dataType: 'json',
+                success: function(response) {
+                    $("#row"+label+""+record_id).remove();
+                    return $.growl.notice({
+                    message: "successfully deleted!"
+                  });
+
+                    }
+                });
+        });
+
+    }
+    
+    function cancelRecord(record_id,log_id,label){
+        $.ajax({
+            _token: '{% csrf_token %}',
+            type: "POST",
+            url: "{% url 'workspace:cancel_record' %}",
+            data: {
+                log_id:log_id,
+                record_id: record_id,
+            },
+            dataType: 'json',
+            success: function(response) {
+                $("#row"+label+""+record_id).remove();
+                return $.growl.notice({
+                    message: "successfully canceled!"
+                  });
+            }
+        });
+    }
+
+    function filter(log_id) {
+        var mode = $("#filterRecord").val();
+        location.href = "{% url 'workspace:review' %}?log_id=" + log_id + "&mode=" + mode;
+    }
+</script>
+{% endblock %}

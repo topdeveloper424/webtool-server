@@ -1,0 +1,201 @@
+﻿{% extends 'layouts/main.html' %}
+{% load staticfiles %}
+{% load poll_extras %}
+{% block content %}
+    <style>
+    #logTable, th, td{
+        padding: 0px;
+        font-size: 12px;
+        text-align: center;
+    }
+    </style>
+    <div class=" content-area">
+        <div class="page-header">
+            <h4 class="page-title">Venue Jobs Summary Page</h4>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Venue Jobs Summary Page</li>
+            </ol>
+        </div>
+
+        <div class="row ">
+            <div class="col-md-12 col-lg-12">
+                <div class="card row">
+                    <div class="card-header row">
+                        <div class="col-3">
+                            <h3 class="card-title">{{ crawler.name }}</h3>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-pill btn-success" data-toggle="modal" data-target="#scheduleModal">Crawler Schedule</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-pill btn-primary" onclick="crawlNow({{ crawler.id }},'{{ crawler.running_flag }}')">Crawl Now</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-pill btn-azure" onclick="reviewJob({{ crawler.id }})">Review Job</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-pill btn-warning" onclick="editScript({{ crawler.id }})">View Script</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 col-lg-12">
+                                <div class="table-responsive">
+                                    <table class="table card-table table-vcenter text-nowrap" id="newTable" cellpadding="1">
+                                        <thead>
+                                            <th>Job Date/Time</th>
+                                            <th>Status</th>
+                                            <th>Total Records Collected</th>
+                                            <th>New Records</th>
+                                            <th>Updated Records</th>
+                                            <th>Errors</th>
+                                            <th>Canceled</th>
+                                            <th>View Detail</th>
+                                        </thead>
+                                        <tbody>
+                                        {% for log in logs %}
+                                            <tr>
+                                                <td>{{ log.run_time }}</td>
+                                                <td>
+                                                    <span class="tag tag-{% if log.status == 'R' %}blue{% elif log.status == 'P' %}red{% elif log.status == 'A' %}yellow{% elif log.status == 'S' %}green{% else %}gray{% endif %}">{{ log.get_status_display }}</span>
+                                                </td>
+                                                <td>{{ log.total_record }}</td>
+                                                <td>{{ log.new_record }}</td>
+                                                <td>{{ log.changed_record }}</td>
+                                                <td>{{ log.error_record }}</td>
+                                                <td>{{ log.canceled_record }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" onclick="onDetail({{ log.id }})"><i class="fa fa-file-text-o mr-2"></i>View Detail</button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- table-responsive -->
+                </div>
+            </div>
+
+        </div>
+
+<div class="modal fade" id="scheduleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Edit Schedule</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <fieldset class="form-group">
+                    <label for="editName">Schedule Time</label>
+                    <select class="form-control">
+                        <option value="1">1 day</option>
+                        <option value="2">2 days</option>
+                        <option value="3">3 days</option>
+                        <option value="4">4 days</option>
+                        <option value="5">5 days</option>
+                        <option value="6">6 days</option>
+                        <option value="7">a week</option>
+                    </select>
+                </fieldset>
+
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block script%}
+<script src="{% static 'plugins/datatable/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'plugins/datatable/dataTables.bootstrap4.min.js' %}"></script>
+    <script>
+    $(function(e) {
+        $('table').DataTable({
+            "searching": false,
+            "info":false,
+            "ordering": false,
+        });
+    } );
+
+    function crawlNow(crawler_id, running_flag) {
+        swal({
+            title: "Confirm",
+            text: "Are you sure to crawl now?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
+        },function () {
+
+            if (running_flag == 1){
+                swal('Running Stopped!', 'this crawler is working now', 'error');
+            }else{
+                $.ajax({
+                    _token:'{% csrf_token %}',
+                    type: "POST",
+                    url: "{% url 'workspace:crawl_now' %}",
+                    data: {crawler_id:crawler_id},
+                    dataType: 'json',
+                });
+            }
+
+        });
+    }
+
+    function editScript(crawler_id) {
+        window.open('{% url "workspace:edit_script" %}?crawler_id='+crawler_id);
+    }
+
+    function onReview(log_id) {
+        window.open('{% url "workspace:review" %}?log_id='+log_id);
+    }
+
+    function onDelete(log_id) {
+        swal({
+            title: "Confirm",
+            text: "Are you sure to delete this job?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
+        },function () {
+            $.ajax({
+                _token:'{% csrf_token %}',
+                type: "POST",
+                url: "{% url 'workspace:delete_log' %}",
+                data: {log_id:log_id},
+                dataType: 'json',
+                success:function (response) {
+                    location.reload(true);
+
+                }
+            });
+
+        });
+    }
+
+    function onDetail(log_id){
+        window.open('{% url "workspace:log_detail" %}?log_id='+log_id);
+    }
+
+    function reviewJob(crawler_id){
+        window.open('{% url "workspace:review" %}?crawler_id='+crawler_id);
+    }
+
+    </script>
+{% endblock %}

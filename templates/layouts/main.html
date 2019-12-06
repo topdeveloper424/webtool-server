@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="msapplication-TileColor" content="#0061da">
+		<meta name="theme-color" content="#1643a3">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="HandheldFriendly" content="True">
+		<meta name="MobileOptimized" content="320">
+        {% load staticfiles %}
+		<link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+		<link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+
+		<!-- Title -->
+		<title>Music Management</title>
+		<link rel="stylesheet" href="{% static 'fonts\fonts\font-awesome.min.css' %}">
+
+		<!-- Sidemenu Css -->
+		<link href="{% static 'plugins\fullside-menu\css\style.css' %}" rel="stylesheet">
+		<link href="{% static 'plugins\fullside-menu\waves.min.css' %}" rel="stylesheet">
+		<link href="{% static 'plugins\datatable\dataTables.bootstrap4.min.css' %}" rel="stylesheet">
+		<!-- Dashboard Css -->
+		<link href="{% static 'css\dashboard.css' %}" rel="stylesheet">
+
+		<!-- Morris.js Charts Plugin -->
+		<link href="{% static 'plugins\morris\morris.css' %}" rel="stylesheet">
+
+		<!-- Custom scroll bar css-->
+		<link href="{% static 'plugins\scroll-bar\jquery.mCustomScrollbar.css' %}" rel="stylesheet">
+
+		<!---Font icons-->
+		<link href="{% static 'css\icons.css' %}" rel="stylesheet">
+		<link href="{% static 'plugins\sweet-alert\sweetalert.css' %}" rel="stylesheet">
+	</head>
+	<body class="">
+		<div id="global-loader"></div>
+		<div class="page">
+			<div class="page-main">
+            <div class="app-header1 header py-1 d-flex">
+                <div class="container-fluid">
+                    <div class="d-flex">
+                        <a class="header-brand" href="{% url 'workspace:home' %}">
+                            <img src="{% static 'images\brand\logo.png' %}" class="header-brand-img" alt="adminor logo">
+                        </a>
+                        <div class="d-flex order-lg-2 ml-auto header-right-icons header-search-icon">
+
+                            <a href="{% url 'accounts:sign_in' %}"><button class="btn btn-pill btn-danger"><i class="fa fa-power-off mr-2"></i>Log out</button></a>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="wrapper">
+                <!-- Sidebar Holder -->
+
+                {% block content %}
+                {% endblock %}
+            </div>
+			</div>
+
+			<!--footer-->
+			<footer class="footer">
+				<div class="container">
+					<div class="row align-items-center flex-row-reverse">
+						<div class="col-md-12 col-sm-12 mt-3 mt-lg-0 text-center">
+							<a href="#">Music Management Tool</a>. Designed by <a href="#">Sirbescu Alexandru</a> All rights reserved.
+						</div>
+					</div>
+				</div>
+			</footer>
+			<!-- End Footer-->
+		</div>
+
+		<!-- Back to top -->
+		<a href="#top" id="back-to-top" style="display: inline;"><i class="fa fa-angle-up"></i></a>
+
+		<!-- Dashboard Core -->
+		<script src="{% static 'js\vendors\jquery-3.2.1.min.js' %}"></script>
+		<script src="{% static 'js\vendors\bootstrap.bundle.min.js' %}"></script>
+		<script src="{% static 'js\vendors\jquery.sparkline.min.js' %}"></script>
+		<script src="{% static 'js\vendors\selectize.min.js' %}"></script>
+		<script src="{% static 'js\vendors\jquery.tablesorter.min.js' %}"></script>
+		<script src="{% static 'js\vendors\circle-progress.min.js' %}"></script>
+		<script src="{% static 'plugins\rating\jquery.rating-stars.js' %}"></script>
+
+		<!-- Fullside-menu Js-->
+		<script src="{% static 'plugins\fullside-menu\jquery.slimscroll.min.js' %}"></script>
+		<script src="{% static 'plugins\fullside-menu\waves.min.js' %}"></script>
+		<script src="{% static 'plugins/sweet-alert/sweetalert.min.js' %}"></script>
+
+		<!-- Dashboard Core -->
+		<script src="{% static 'js\index1.js' %}"></script>
+
+		<!--Morris.js Charts Plugin -->
+		<script src="{% static 'plugins\morris\raphael-min.js' %}"></script>
+		<script src="{% static 'plugins\morris\morris.js' %}"></script>
+
+		<!-- Custom scroll bar Js-->
+		<script src="{% static 'plugins\scroll-bar\jquery.mCustomScrollbar.concat.min.js' %}"></script>
+
+		{% block script %}
+		{% endblock %}
+
+		<!-- Custom Js-->
+		<script src="{% static 'js\custom.js' %}"></script>
+
+
+
+	</body>
+</html>
